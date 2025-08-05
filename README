@@ -1,0 +1,58 @@
+# Terraform WireGuard Server on Azure
+
+This repository contains Terraform code to deploy a WireGuard® VPN server on Microsoft Azure.
+
+The configuration sets up a new Virtual Network, a Linux VM, and all the necessary networking and security rules. It then uses a custom script to install WireGuard, generate server and client keys, and create configuration files for a specified number of clients.
+
+## Features
+
+- **Automated Deployment**: Spin up a full WireGuard server environment with a single `terraform apply`.
+- **Dynamic Client Configuration**: Generates configuration files for a variable number of clients.
+- **Secure by Default**: Creates Network Security Group rules to only allow SSH and the WireGuard UDP port.
+- **Outputs**: Provides the server's public IP and automatically downloads client `.conf` files to your local machine.
+
+## Prerequisites
+
+1.  [**Terraform**](https://learn.hashicorp.com/tutorials/terraform/install-cli) (v1.0 or newer)
+2.  [**Azure CLI**](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+3.  An active **Azure Subscription**.
+4.  An **SSH Key Pair**. The code assumes your public key is located at `~/.ssh/id_rsa.pub`. If it's elsewhere, you'll need to update the path in `main.tf`.
+
+## How to Use
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/sebastys/terraform-azure-wireguard.git
+    cd terraform-azure-wireguard
+    ```
+
+2.  **Log in to Azure:**
+    ```bash
+    az login
+    ```
+
+3.  **Initialize Terraform:**
+    This will download the necessary provider plugins.
+    ```bash
+    terraform init
+    ```
+
+4.  **Deploy the Infrastructure:**
+    Review the plan and type `yes` when prompted.
+    ```bash
+    terraform apply
+    ```
+
+5.  **Connect Your Client:**
+    The `terraform apply` command will create the Azure resources and then download the client configuration files (e.g., `wg0-client-1.conf`, `wg0-client-2.conf`, etc.) into your project directory.
+
+    Import one of these `.conf` files into your WireGuard client application on your device to connect.
+
+## Customization
+
+You can customize the deployment by editing `variables.tf` or creating a `terraform.tfvars` file to change:
+
+-   `location`: The Azure region for deployment.
+-   `vm_size`: The size of the VM.
+-   `admin_username`: The SSH username for the VM.
+-   `client_count`: The number of client configuration files to generate.
