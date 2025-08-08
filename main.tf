@@ -96,7 +96,7 @@ resource "azurerm_linux_virtual_machine" "wg_vm" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file("C:\\Users\\XAF603346\\terraform-azure-wireguard\\vpn.pub")
+    public_key = file("/home/sebastian/.ssh/id_ed25519.pub")
   }
 
   os_disk {
