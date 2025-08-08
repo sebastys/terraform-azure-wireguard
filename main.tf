@@ -1,6 +1,7 @@
 # Configure the Azure Provider
 provider "azurerm" {
   features {}
+  subscription_id = "99229b25-a420-4fa6-ad71-2d301b63513b"
 }
 
 # Create a resource group
@@ -41,26 +42,27 @@ resource "azurerm_network_security_group" "wg_nsg" {
   resource_group_name = azurerm_resource_group.wg_rg.name
 
   security_rule {
-    name                       = "SSH"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
     name                       = "Wireguard"
-    priority                   = 1002
+    priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Udp"
     source_port_range          = "*"
     destination_port_range     = "51820"
-    source_address_prefix      = "*"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  # --- ADD THIS NEW RULE ---
+  security_rule {
+    name                       = "SSH"
+    priority                   = 110 # Use a different priority than other rules
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "4.208.1.69/32" # IMPORTANT: Use your IP!
     destination_address_prefix = "*"
   }
 }
@@ -122,17 +124,25 @@ resource "azurerm_virtual_machine_extension" "wg_script" {
 
   settings = <<SETTINGS
     {
-        "script": "${base64encode(templatefile("wireguard.sh", { client_count = var.client_count }))}"
+        "script": "${base64encode(templatefile("wireguard.sh", {
+  client_count     = var.client_count,
+  admin_username   = var.admin_username,
+  server_public_ip = azurerm_public_ip.wg_pip.ip_address
+}))}"
     }
 SETTINGS
 }
 
 # Download the client configuration files
+# Corrected version
 resource "null_resource" "download_configs" {
-  depends_on = [azurerm_virtual_machine_extension.wg_script]
+  depends_on = [
+    azurerm_network_security_group.wg_nsg
+  ]
 
   provisioner "local-exec" {
-    command = "for i in $(seq 1 ${var.client_count}); do scp -o StrictHostKeyChecking=no ${var.admin_username}@${azurerm_public_ip.wg_pip.ip_address}:/home/${var.admin_username}/wg0-client-$i.conf .; done"
+    command     = "for i in $(seq 1 ${var.client_count}); do scp -o StrictHostKeyChecking=no ${var.admin_username}@${azurerm_public_ip.wg_pip.ip_address}:/home/${var.admin_username}/wg0-client-$i.conf .; done"
+    on_failure  = "continue"
   }
 }
 
